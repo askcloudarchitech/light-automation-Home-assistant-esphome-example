@@ -1,0 +1,17 @@
+tv_power:
+  friendly_name: TV Power
+  value_template: "{{ is_state( 'media_player.lg_webos_tv_uk6500aua' ,'on') }}"
+  turn_on:
+    - service: remote.send_command
+      data:
+        device: TV
+        command: Power
+      target:
+        entity_id: remote.blaster_remote
+  turn_off:
+    - service: remote.send_command
+      data:
+        device: TV
+        command: Power
+      target:
+        entity_id: remote.blaster_remote

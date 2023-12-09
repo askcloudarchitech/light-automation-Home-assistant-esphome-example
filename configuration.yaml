@@ -1,0 +1,264 @@
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+http:
+  server_host: 0.0.0.0
+  ip_ban_enabled: true
+  login_attempts_threshold: 5
+  use_x_forwarded_for: true
+  trusted_proxies:
+  - 0.0.0.0/0
+
+switch:
+  - platform: template
+    switches:
+      !include backlight_switches.yaml
+
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+sensor:
+  - platform: illuminance
+    # Name of new sensor entity
+    name: Home Outdoor Illuminance
+    # Existing entity that provides current weather conditions
+    entity_id: weather.home
+  - platform: time_date
+    display_options:
+      - 'time'
+      - 'date'
+      - 'date_time'
+      - 'date_time_utc'
+      - 'date_time_iso'
+      - 'time_date'
+
+light:
+  - platform: template
+    lights:
+      unified_pole_lights:
+        friendly_name: "combined pole lights"
+        level_template: "{{ states('input_number.combined_light_bar_brightness') | int }}"
+        value_template: "{{ states('input_boolean.combined_light_bar_state') }}"
+        color_template: "({{ states('input_number.combined_light_bar_hue') | int }}, {{ states('input_number.combined_light_bar_saturation') | int }})"
+        turn_on:
+          - service: light.turn_on
+            target:
+              entity_id: >-
+                {% if(is_state('input_number.combined_light_bar_saturation', "0.0")) %} 
+                  light.white_pole_1_2, light.white_pole_2_2
+                {% else %}
+                  light.polelight_1_2, light.polelight_2_2
+                {% endif %}
+          - service: light.turn_off
+            target:
+              entity_id: >-
+                {% if(is_state('input_number.combined_light_bar_saturation', "0.0")) %} 
+                  light.polelight_1_2, light.polelight_2_2
+                {% else %}
+                  light.white_pole_1_2, light.white_pole_2_2
+                {% endif %}
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.combined_light_bar_state
+        turn_off:
+          - service: light.turn_off
+            entity_id: [light.white_pole_1_2, light.white_pole_2_2, light.polelight_1_2, light.polelight_2_2]
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.combined_light_bar_state
+        set_level:
+          - service: input_number.set_value
+            data:
+              value: "{{ brightness }}"
+              entity_id: input_number.combined_light_bar_brightness
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.combined_light_bar_state
+          - service: light.turn_on
+            data:
+              brightness: >-
+                {% from 'lighting_macros.jinja' import getBrightness %}
+                {{ getBrightness('light.unified_pole_lights', brightness) }}
+            target:
+              entity_id: >-
+                {% if(is_state('input_number.combined_light_bar_saturation', "0.0")) %} 
+                  light.white_pole_1_2, light.white_pole_2_2
+                {% else %}
+                  light.polelight_1_2, light.polelight_2_2
+                {% endif %}
+          - service: light.turn_off
+            target:
+              entity_id: >-
+                {% if(is_state('input_number.combined_light_bar_saturation', "0.0")) %} 
+                  light.polelight_1_2, light.polelight_2_2
+                {% else %}
+                  light.white_pole_1_2, light.white_pole_2_2
+                {% endif %}
+        set_color:
+          - service: input_number.set_value
+            data:
+              value: "{{ h }}"
+              entity_id: input_number.combined_light_bar_hue
+          - service: input_number.set_value
+            data:
+              value: "{{ s }}"
+              entity_id: input_number.combined_light_bar_saturation
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.combined_light_bar_state
+          - service: light.turn_on
+            data:
+              hs_color: 
+                - "{{ hs[0] }}"
+                - "{{ hs[1] }}"
+              brightness: >-
+                {% if(brightness) %}
+                  {% from 'lighting_macros.jinja' import getBrightness %}
+                  {{ getBrightness('light.unified_pole_lights', brightness) }}
+                {% else %}
+                  {% from 'lighting_macros.jinja' import getBrightness %}
+                  {{ getBrightness('light.unified_pole_lights', states('input_number.combined_light_bar_brightness')) | float }}
+                {% endif %}
+            target:
+              entity_id: >-
+                {% if(is_state('input_number.combined_light_bar_saturation', "0.0")) %} 
+                  light.white_pole_1_2, light.white_pole_2_2
+                {% else %}
+                  light.polelight_1_2, light.polelight_2_2
+                {% endif %}
+          - service: light.turn_off
+            target:
+              entity_id: >-
+                {% if(is_state('input_number.combined_light_bar_saturation', "0.0")) %} 
+                  light.polelight_1_2, light.polelight_2_2
+                {% else %}
+                  light.white_pole_1_2, light.white_pole_2_2
+                {% endif %}
+      clone_strip_light:
+        friendly_name: "clone strip light"
+        level_template: "{{ states('input_number.strip_light_clone_brightness') | int }}"
+        value_template: "{{ states('light.elgato_ew40k1a03213') }}"
+        color_template: "{{ state_attr('light.elgato_ew40k1a03213', 'hs_color') }}"
+        turn_on:
+          - service: light.turn_on
+            target:
+              entity_id: light.elgato_ew40k1a03213
+        turn_off:
+          - service: light.turn_off
+            target:
+              entity_id: light.elgato_ew40k1a03213
+        set_level:
+          - service: input_number.set_value
+            data:
+              value: "{{ brightness }}"
+              entity_id: input_number.strip_light_clone_brightness
+          - service: light.turn_on
+            data:
+              brightness: >-
+                {% from 'lighting_macros.jinja' import getBrightness %}
+                {{ getBrightness('light.elgato_ew40k1a03213', brightness) }}
+            target:
+              entity_id: light.elgato_ew40k1a03213
+        set_color:
+          - service: light.turn_on
+            data:
+              hs_color: 
+                - "{{ hs[0] }}"
+                - "{{ hs[1] }}"
+              brightness: >-
+                {% if(brightness) %}
+                  {% from 'lighting_macros.jinja' import getBrightness %}
+                  {{ getBrightness('light.elgato_ew40k1a03213', brightness) }}
+                {% else %}
+                  {% from 'lighting_macros.jinja' import getBrightness %}
+                  {{ getBrightness('light.elgato_ew40k1a03213', states('input_number.strip_light_clone_brightness')) | float }}
+                {% endif %}
+            target:
+              entity_id: light.elgato_ew40k1a03213
+      clone_fan_light:
+        friendly_name: "clone fan light"
+        level_template: "{{ states('input_number.fan_light_clone_brightness') | int }}"
+        value_template: "{{ states('light.fan_light') }}"
+        color_template: "{{ state_attr('light.fan_light', 'hs_color') }}"
+        turn_on:
+          - service: light.turn_on
+            target:
+              entity_id: light.fan_light
+        turn_off:
+          - service: light.turn_off
+            target:
+              entity_id: light.fan_light
+        set_level:
+          - service: input_number.set_value
+            data:
+              value: "{{ brightness }}"
+              entity_id: input_number.fan_light_clone_brightness
+          - service: light.turn_on
+            data:
+              brightness: >-
+                {% from 'lighting_macros.jinja' import getBrightness %}
+                {{ getBrightness('light.fan_light', brightness) }}
+            target:
+              entity_id: light.fan_light
+        set_color:
+          - service: light.turn_on
+            data:
+              hs_color: 
+                - "{{ hs[0] }}"
+                - "{{ hs[1] }}"
+              brightness: >-
+                {% if(brightness) %}
+                  {% from 'lighting_macros.jinja' import getBrightness %}
+                  {{ getBrightness('light.fan_light', brightness) }}
+                {% else %}
+                  {% from 'lighting_macros.jinja' import getBrightness %}
+                  {{ getBrightness('light.fan_light', states('input_number.fan_light_clone_brightness')) | float }}
+                {% endif %}
+            target:
+              entity_id: light.fan_light
+      clone_key_light:
+        friendly_name: "clone key light"
+        level_template: "{{ states('input_number.key_light_clone_brightness') | int }}"
+        value_template: "{{ states('light.elgato_gw24l1a04995') }}"
+        temperature_template: "{{ state_attr('light.elgato_gw24l1a04995', 'color_temp') }}"
+        turn_on:
+          - service: light.turn_on
+            target:
+              entity_id: light.elgato_gw24l1a04995
+        turn_off:
+          - service: light.turn_off
+            target:
+              entity_id: light.elgato_gw24l1a04995
+        set_level:
+          - service: input_number.set_value
+            data:
+              value: "{{ brightness }}"
+              entity_id: input_number.key_light_clone_brightness
+          - service: light.turn_on
+            data:
+              brightness: >-
+                {% from 'lighting_macros.jinja' import getBrightness %}
+                {{ getBrightness('light.elgato_gw24l1a04995', brightness) }}
+            target:
+              entity_id: light.elgato_gw24l1a04995
+        set_temperature:
+          - service: light.turn_on
+            data:
+              color_temp: "{{ color_temp }}"
+              brightness: >-
+                {% if(brightness) %}
+                  {% from 'lighting_macros.jinja' import getBrightness %}
+                  {{ getBrightness('light.elgato_gw24l1a04995', brightness) }}
+                {% else %}
+                  {% from 'lighting_macros.jinja' import getBrightness %}
+                  {{ getBrightness('light.elgato_gw24l1a04995', states('input_number.key_light_clone_brightness')) | float }}
+                {% endif %}
+            target:
+              entity_id: light.elgato_gw24l1a04995

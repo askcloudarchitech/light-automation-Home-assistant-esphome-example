@@ -1,0 +1,8 @@
+turn_off_combined_pole_lights:
+  alias: turn off combined pole lights
+  sequence:
+  - service: light.turn_off
+    data: {}
+    target:
+      entity_id: light.unified_pole_lights
+  mode: single

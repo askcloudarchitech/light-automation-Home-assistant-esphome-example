@@ -1,0 +1,38 @@
+{%macro getBrightness(entity, brightness) %}
+    {% set properties = { 
+        "light.unified_pole_lights" : {
+            "minBrightness" : 100,
+            "maxBrightness" : 255
+        },
+        "light.elgato_ew40k1a03213" : {
+            "minBrightness" : 25,
+            "maxBrightness" : 210
+        },
+        "light.fan_light" : {
+            "minBrightness" : 10,
+            "maxBrightness" : 255
+        },
+        "light.elgato_gw24l1a04995" : {
+            "minBrightness" : 25,
+            "maxBrightness" : 180
+        }
+    }
+    %}
+    {% set brightness_variance = properties[entity].maxBrightness - properties[entity].minBrightness %}
+    {% if( brightness == 1.0) %}
+        {% set illuminance = states('sensor.home_outdoor_illuminance') | int %}
+        {% set max_illuminance = 50000 %}
+        {% set min_illuminance = 3000 %}
+        
+        {% if( illuminance > max_illuminance ) %}
+            {{ (((properties[entity].maxBrightness/255)*(brightness_variance) )+properties[entity].minBrightness) | int }}
+        {% elif(illuminance <= min_illuminance) %}
+            {{ ((((properties[entity].minBrightness)/255)*(brightness_variance) )+properties[entity].minBrightness) | int }}
+        {% else %}
+            {% set illuminance_pct = (illuminance - min_illuminance)/(max_illuminance-min_illuminance) %}
+            {{ (((illuminance_pct)*(brightness_variance))+properties[entity].minBrightness) | int }}
+        {% endif %}
+    {% else %}
+        {{ ((((brightness | int)/255)*(brightness_variance))+properties[entity].minBrightness) | int }}
+    {% endif %}
+{% endmacro %}
